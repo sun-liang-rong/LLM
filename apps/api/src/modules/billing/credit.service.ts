@@ -40,6 +40,7 @@ export class CreditService {
     const signupBonusCredits = this.centsToCredits(
       await this.platformConfig.signupBonusCents(),
     );
+    const status = await this.checkInStatus(userId, tenantId);
     return this.prisma.$transaction(async (tx) => {
       const account = await tx.userCreditAccount.create({
         data: {
@@ -62,7 +63,7 @@ export class CreditService {
           },
         });
       }
-      return this.toSummary(account, await this.checkInStatus(userId, tenantId));
+      return this.toSummary(account, status);
     });
   }
 

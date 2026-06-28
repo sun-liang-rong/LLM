@@ -132,7 +132,7 @@ export class AdminAuthService {
         role: true,
       },
     });
-    const ttl = this.config.get<number>("ADMIN_SESSION_TTL", 86_400);
+    const ttl = this.numberValue("ADMIN_SESSION_TTL", 86_400);
     const payload: AdminTokenPayload = {
       sub: "admin",
       email,
@@ -264,5 +264,11 @@ export class AdminAuthService {
       return role;
     }
     return "owner";
+  }
+
+  private numberValue(key: string, fallback: number) {
+    const value = this.config.get<unknown>(key);
+    const parsed = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
   }
 }

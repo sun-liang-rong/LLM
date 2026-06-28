@@ -30,7 +30,7 @@ export class AuthConfigService {
   constructor(private readonly config: ConfigService) {}
 
   tenantSessionTtl() {
-    return this.config.get<number>("TENANT_SESSION_TTL", 86_400);
+    return this.numberValue("TENANT_SESSION_TTL", 86_400);
   }
 
   tenantJwtSecret() {
@@ -47,14 +47,14 @@ export class AuthConfigService {
         this.config.get<string>("AUTH_VERIFICATION_CHANNEL", "email") === "sms"
           ? "sms"
           : "email",
-      codeLength: this.config.get<number>("AUTH_VERIFICATION_CODE_LENGTH", 6),
-      ttlSeconds: this.config.get<number>("AUTH_VERIFICATION_TTL", 300),
-      resendCooldownSeconds: this.config.get<number>(
+      codeLength: this.numberValue("AUTH_VERIFICATION_CODE_LENGTH", 6),
+      ttlSeconds: this.numberValue("AUTH_VERIFICATION_TTL", 300),
+      resendCooldownSeconds: this.numberValue(
         "AUTH_VERIFICATION_RESEND_COOLDOWN",
         60,
       ),
-      maxAttempts: this.config.get<number>("AUTH_VERIFICATION_MAX_ATTEMPTS", 5),
-      dailyLimit: this.config.get<number>("AUTH_VERIFICATION_DAILY_LIMIT", 10),
+      maxAttempts: this.numberValue("AUTH_VERIFICATION_MAX_ATTEMPTS", 5),
+      dailyLimit: this.numberValue("AUTH_VERIFICATION_DAILY_LIMIT", 10),
       devCode: this.config.get<string>("AUTH_VERIFICATION_DEV_CODE", ""),
     };
   }
@@ -72,7 +72,7 @@ export class AuthConfigService {
   smtp(): SmtpConfig {
     return {
       host: this.config.get<string>("SMTP_HOST", ""),
-      port: this.config.get<number>("SMTP_PORT", 587),
+      port: this.numberValue("SMTP_PORT", 587),
       secure: this.config.get<string>("SMTP_SECURE", "false") === "true",
       user: this.config.get<string>("SMTP_USER", ""),
       password: this.config.get<string>("SMTP_PASSWORD", ""),
@@ -85,5 +85,11 @@ export class AuthConfigService {
 
   apiBaseUrl() {
     return this.config.get<string>("API_BASE_URL", "http://localhost:3000");
+  }
+
+  private numberValue(key: string, fallback: number) {
+    const value = this.config.get<unknown>(key);
+    const parsed = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
   }
 }

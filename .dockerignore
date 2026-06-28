@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+dist
+**/dist
+.git
+.DS_Store
+*.log
+.env
+.env.*
+!/.env.example
+apps/api/data
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
