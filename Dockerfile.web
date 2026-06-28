@@ -1,0 +1,18 @@
+FROM node:20-alpine AS base
+WORKDIR /app
+RUN corepack enable
+
+FROM base AS deps
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml ./
+COPY apps/web/package.json apps/web/package.json
+COPY packages/shared/package.json packages/shared/package.json
+RUN pnpm install --frozen-lockfile=false
+
+FROM deps AS build
+COPY . .
+RUN pnpm --filter @gateway/web build
+
+FROM nginx:1.27-alpine AS runtime
+COPY --from=build /app/apps/web/dist /usr/share/nginx/html
+COPY infra/nginx/web.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80

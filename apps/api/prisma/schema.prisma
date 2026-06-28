@@ -1,0 +1,341 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  projects  Project[]
+  apiKeys   ApiKey[]
+  budgets   Budget[]
+  billingGroups BillingGroup[]
+  creditAccounts UserCreditAccount[]
+  creditLedgers CreditLedger[]
+  checkInRecords CheckInRecord[]
+}
+
+model PlatformSettings {
+  id                     String   @id @default("default")
+  siteName               String   @default("AI Gateway")
+  logoText               String   @default("AG")
+  homeNotice             String   @default("欢迎使用 AI Gateway，请合理安排 API 调用额度。")
+  registrationEnabled    Boolean  @default(true)
+  checkInEnabled         Boolean  @default(true)
+  signupBonusUsd         Float    @default(3)
+  dailyCheckInMinUsd     Float    @default(0.01)
+  dailyCheckInMaxUsd     Float    @default(0.1)
+  defaultModel           String   @default("gpt-4o-mini")
+  smtpHost               String?
+  smtpPort               Int      @default(587)
+  smtpUser               String?
+  smtpFrom               String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  type      String   @default("notice")
+  pinned    Boolean  @default(false)
+  status    String   @default("draft")
+  publishAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id        String   @id @default(cuid())
+  tenantId  String
+  billingGroupId String?
+  email     String   @unique
+  name      String?
+  role      String   @default("admin")
+  passwordHash String?
+  verifiedAt DateTime?
+  failedLoginCount Int @default(0)
+  lockedUntil DateTime?
+  disabled  Boolean  @default(false)
+  lastLoginAt DateTime?
+  lastLoginIp String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  billingGroup BillingGroup? @relation(fields: [billingGroupId], references: [id])
+  apiKeys ApiKey[]
+  creditAccount UserCreditAccount?
+  creditLedgers CreditLedger[]
+  checkInRecords CheckInRecord[]
+}
+
+model BillingGroup {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  multiplier  Float    @default(1)
+  allowedModels String?
+  description String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  users User[]
+  apiKeys ApiKey[]
+}
+
+model Project {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  apiKeys  ApiKey[]
+  requests RequestLog[]
+}
+
+model ApiKey {
+  id             String    @id @default(cuid())
+  tenantId       String
+  projectId      String?
+  userId         String?
+  billingGroupId String?
+  modelGroupId   String?
+  name           String
+  keyHash        String
+  encryptedKey   String?
+  keyPrefix      String?
+  enabled        Boolean   @default(true)
+  customKey      Boolean   @default(false)
+  ipAllowlist    String?
+  rateLimitRpm   Int?
+  rateLimitTpm   Int?
+  expiresAt      DateTime?
+  lastUsedAt     DateTime?
+  dailyBudgetUsd Float?
+  monthlyBudgetUsd Float?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id])
+  project Project? @relation(fields: [projectId], references: [id])
+  user    User?    @relation(fields: [userId], references: [id])
+  billingGroup BillingGroup? @relation(fields: [billingGroupId], references: [id])
+  modelGroup ModelGroup? @relation(fields: [modelGroupId], references: [id])
+}
+
+model UserCreditAccount {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  tenantId            String
+  balanceCredits      BigInt   @default(0)
+  totalGrantedCredits BigInt   @default(0)
+  totalUsedCredits    BigInt   @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+model CreditLedger {
+  id                  String   @id @default(cuid())
+  userId              String
+  tenantId            String
+  type                String
+  amountCredits       BigInt
+  balanceAfterCredits BigInt
+  requestId           String?
+  expiresAt           DateTime?
+  description         String?
+  createdAt           DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+model CheckInRecord {
+  id            String   @id @default(cuid())
+  userId        String
+  tenantId      String
+  checkInDate   String
+  rewardCredits BigInt
+  createdAt     DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([userId, checkInDate])
+}
+
+model Provider {
+  id        String     @id @default(cuid())
+  provider  String     @unique
+  protocol  String     @default("openai-compatible")
+  name      String
+  baseUrl   String
+  enabled   Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  keys   ProviderKey[]
+  models Model[]
+}
+
+model ProviderKey {
+  id             String            @id @default(cuid())
+  providerId     String
+  name           String
+  encryptedKey   String
+  status         String            @default("healthy")
+  weight         Int               @default(1)
+  rpmLimit       Int?
+  tpmLimit       Int?
+  dailyBudgetUsd Float?
+  windowSizeMinutes Int               @default(300)
+  windowRequestLimit Int              @default(500)
+  windowStartedAt DateTime?
+  windowRequestCount Int              @default(0)
+  lastError      String?
+  cooldownUntil  DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  provider Provider @relation(fields: [providerId], references: [id])
+}
+
+model Model {
+  id                         String     @id @default(cuid())
+  providerId                 String
+  modelGroupId               String?
+  publicId                   String     @unique
+  upstreamModel              String
+  displayName                String
+  description                String?
+  contextWindow              Int?
+  priceMultiplier            Float      @default(1)
+  inputUsdPerMillionTokens   Float
+  outputUsdPerMillionTokens  Float
+  supportsTools              Boolean    @default(false)
+  supportsVision             Boolean    @default(false)
+  supportsStreaming          Boolean    @default(true)
+  enabled                    Boolean    @default(true)
+  createdAt                  DateTime   @default(now())
+  updatedAt                  DateTime   @updatedAt
+
+  provider Provider @relation(fields: [providerId], references: [id])
+  modelGroup ModelGroup? @relation(fields: [modelGroupId], references: [id])
+}
+
+model ModelGroup {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  multiplier  Float    @default(1)
+  sortOrder   Int      @default(0)
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  models Model[]
+  apiKeys ApiKey[]
+}
+
+model ModelAlias {
+  id        String   @id @default(cuid())
+  alias     String   @unique
+  mode      String   @default("balanced")
+  targets   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RequestLog {
+  id             String        @id @default(cuid())
+  requestId      String        @unique
+  tenantId       String?
+  projectId      String?
+  apiKeyId       String?
+  providerKeyId  String?
+  protocol       String
+  provider       String?
+  model          String
+  upstreamModel  String?
+  status         String
+  inputTokens    Int           @default(0)
+  outputTokens   Int           @default(0)
+  totalTokens    Int           @default(0)
+  cacheReadTokens Int          @default(0)
+  cacheCreationTokens Int      @default(0)
+  reasoningTokens Int          @default(0)
+  estimatedTokens Boolean      @default(false)
+  costUsd        Float?
+  latencyMs      Int?
+  retryCount     Int           @default(0)
+  error          String?
+  createdAt      DateTime      @default(now())
+
+  project Project? @relation(fields: [projectId], references: [id])
+}
+
+model Budget {
+  id          String   @id @default(cuid())
+  tenantId    String
+  scope       String
+  scopeId     String
+  dailyUsd    Float?
+  monthlyUsd  Float?
+  action      String   @default("reject")
+  downgradeModelAlias String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  target    String
+  metadata  String?
+  createdAt DateTime @default(now())
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  email     String
+  ip        String?
+  scope     String
+  status    String
+  reason    String?
+  createdAt DateTime @default(now())
+}
+
+model VerificationCode {
+  id          String   @id @default(cuid())
+  email       String
+  channel     String   @default("email")
+  purpose     String   @default("register")
+  codeHash    String
+  tokenHash   String?
+  attempts    Int      @default(0)
+  consumedAt  DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

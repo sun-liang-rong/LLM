@@ -1,0 +1,21 @@
+{
+  "name": "ai-coding-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @gateway/api --filter @gateway/web dev",
+    "dev:api": "pnpm --filter @gateway/api dev",
+    "dev:web": "pnpm --filter @gateway/web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.12",
+    "prettier": "3.3.3",
+    "typescript": "5.5.4"
+  }
+}
