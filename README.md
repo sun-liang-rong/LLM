@@ -16,6 +16,8 @@ OpenAI and Anthropic compatible AI Gateway for coding agents such as Claude Code
 pnpm install
 cp .env.example .env
 pnpm --filter @gateway/api prisma:generate
+pnpm --filter @gateway/shared build
+pnpm --filter @gateway/protocol build
 pnpm --filter @gateway/api sqlite:init
 pnpm dev
 ```
