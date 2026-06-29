@@ -33,14 +33,19 @@
           <template #default="{ row }">
             <div class="key-cell">
               <code class="inline-code">{{ row.key ?? row.keyPrefix ?? "-" }}</code>
-              <el-button
+              <el-tooltip
                 v-if="row.key"
-                :icon="CopyDocument"
-                link
-                type="primary"
-                :aria-label="t('common.copy')"
-                @click="copyText(row.key)"
-              />
+                :content="t('common.copy')"
+                placement="top"
+              >
+                <el-button
+                  :icon="CopyDocument"
+                  link
+                  type="primary"
+                  :aria-label="t('common.copy')"
+                  @click="copyText(row.key)"
+                />
+              </el-tooltip>
               <el-tag v-else size="small" type="info">
                 {{ t("apiKeys.unrecoverable") }}
               </el-tag>
@@ -93,25 +98,36 @@
         </el-table-column>
         <el-table-column :label="t('common.actions')" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button
-              v-if="auth.canManageApiKeys"
-              :icon="Edit"
-              :aria-label="t('apiKeys.editBillingGroup')"
-              @click="openBillingGroupDialog(row)"
-            />
-            <el-button
-              v-if="auth.canManageApiKeys"
-              :icon="SwitchButton"
-              :aria-label="row.enabled ? t('apiKeys.disableConfirm') : t('apiKeys.enableConfirm')"
-              @click="toggle(row)"
-            />
-            <el-button
-              v-if="auth.canManageApiKeys"
-              :icon="Delete"
-              type="danger"
-              :aria-label="t('common.delete')"
-              @click="deleteKey(row.id)"
-            />
+            <div class="table-actions">
+              <el-tooltip :content="t('apiKeys.editBillingGroup')" placement="top">
+                <el-button
+                  v-if="auth.canManageApiKeys"
+                  :icon="Edit"
+                  :aria-label="t('apiKeys.editBillingGroup')"
+                  @click="openBillingGroupDialog(row)"
+                />
+              </el-tooltip>
+              <el-tooltip
+                :content="row.enabled ? t('apiKeys.disableConfirm') : t('apiKeys.enableConfirm')"
+                placement="top"
+              >
+                <el-button
+                  v-if="auth.canManageApiKeys"
+                  :icon="SwitchButton"
+                  :aria-label="row.enabled ? t('apiKeys.disableConfirm') : t('apiKeys.enableConfirm')"
+                  @click="toggle(row)"
+                />
+              </el-tooltip>
+              <el-tooltip :content="t('common.delete')" placement="top">
+                <el-button
+                  v-if="auth.canManageApiKeys"
+                  :icon="Delete"
+                  type="danger"
+                  :aria-label="t('common.delete')"
+                  @click="deleteKey(row.id)"
+                />
+              </el-tooltip>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -253,9 +269,11 @@
       />
       <div class="copy-input">
         <el-input v-model="createdKey" readonly />
-        <el-button :icon="CopyDocument" @click="copyText(createdKey)">
-          {{ t("common.copy") }}
-        </el-button>
+        <el-tooltip :content="t('common.copy')" placement="top">
+          <el-button :icon="CopyDocument" @click="copyText(createdKey)">
+            {{ t("common.copy") }}
+          </el-button>
+        </el-tooltip>
       </div>
     </el-dialog>
   </section>

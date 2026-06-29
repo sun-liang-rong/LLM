@@ -33,9 +33,16 @@
         </el-menu>
 
         <div class="sidebar-footer mobile-footer">
-          <div class="sidebar-footer-row">
-            <el-icon><Moon /></el-icon>
-            <span>{{ t("app.themeLabel") }}</span>
+          <div class="sidebar-footer-row sidebar-toggle-row">
+            <div class="sidebar-toggle-label">
+              <el-icon><component :is="themeIcon" /></el-icon>
+              <span>{{ t("app.themeLabel") }}</span>
+            </div>
+            <el-switch
+              v-model="isDarkTheme"
+              :aria-label="themeSwitchLabel"
+              @change="setThemeFromSwitch"
+            />
           </div>
           <div class="sidebar-footer-row">
             <el-icon><Fold /></el-icon>
@@ -45,37 +52,72 @@
       </div>
     </el-drawer>
 
-    <el-aside width="252px" class="sidebar">
+    <el-aside
+      :width="sidebarWidth"
+      class="sidebar"
+      :class="{ 'is-collapsed': sidebarCollapsed }"
+    >
       <div class="brand">
         <div class="brand-mark">✳</div>
-        <div class="brand-copy">
+        <div v-if="!sidebarCollapsed" class="brand-copy">
           <strong>{{ t("app.brand") }}</strong>
           <span>{{ t("app.codingAgents") }}</span>
         </div>
       </div>
 
       <div class="sidebar-scroll">
-        <el-menu :default-active="activeMenu" router class="sidebar-menu">
-          <el-menu-item
+        <el-menu
+          :default-active="activeMenu"
+          :collapse="sidebarCollapsed"
+          router
+          class="sidebar-menu"
+        >
+          <el-tooltip
             v-for="item in primaryNavItems"
             :key="item.index"
-            :index="item.index"
+            :content="item.label"
+            :disabled="!sidebarCollapsed"
+            placement="right"
           >
-            <el-icon><component :is="item.icon" /></el-icon>
-            <span>{{ item.label }}</span>
-          </el-menu-item>
+            <el-menu-item :index="item.index">
+              <el-icon><component :is="item.icon" /></el-icon>
+              <template v-if="!sidebarCollapsed" #title>
+                <span>{{ item.label }}</span>
+              </template>
+            </el-menu-item>
+          </el-tooltip>
         </el-menu>
 
         <div class="sidebar-footer">
-          <div class="sidebar-footer-row">
-            <el-icon><Moon /></el-icon>
-            <span>{{ t("app.themeLabel") }}</span>
+          <div class="sidebar-footer-row sidebar-toggle-row">
+            <div class="sidebar-toggle-label">
+              <el-icon><component :is="themeIcon" /></el-icon>
+              <span v-if="!sidebarCollapsed">{{ t("app.themeLabel") }}</span>
+            </div>
+            <el-switch
+              v-if="!sidebarCollapsed"
+              v-model="isDarkTheme"
+              :aria-label="themeSwitchLabel"
+              @change="setThemeFromSwitch"
+            />
           </div>
-          <div class="sidebar-footer-row">
-            <el-icon><Fold /></el-icon>
-            <span>{{ t("app.collapseLabel") }}</span>
-          </div>
-          <div class="sidebar-support">
+          <el-tooltip
+            :content="collapseToggleLabel"
+            :disabled="!sidebarCollapsed"
+            placement="right"
+          >
+            <button
+              type="button"
+              class="sidebar-footer-row sidebar-action-row"
+              :aria-label="collapseToggleLabel"
+              :aria-pressed="sidebarCollapsed"
+              @click="toggleSidebarCollapsed"
+            >
+              <el-icon><component :is="collapseIcon" /></el-icon>
+              <span v-if="!sidebarCollapsed">{{ t("app.collapseLabel") }}</span>
+            </button>
+          </el-tooltip>
+          <div v-if="!sidebarCollapsed" class="sidebar-support">
             <small>{{ t("app.supportLabel") }}</small>
             <strong>{{ auth.user?.email ?? t("app.supportFallback") }}</strong>
           </div>
@@ -237,6 +279,7 @@ import {
   Connection,
   CreditCard,
   Document,
+  Expand,
   Fold,
   Key,
   Menu,
@@ -245,6 +288,7 @@ import {
   OfficeBuilding,
   PriceTag,
   Setting,
+  Sunny,
   User,
   Tickets,
 } from "@element-plus/icons-vue";
@@ -254,6 +298,16 @@ import { getJson } from "./api/client";
 import { useI18n } from "./i18n";
 import { useAuthStore } from "./stores/auth";
 import type { Announcement } from "./stores/site-config";
+import {
+  getInitialSidebarCollapsed,
+  persistSidebarCollapsed,
+} from "./utils/sidebar";
+import {
+  applyThemePreference,
+  getInitialThemePreference,
+  persistThemePreference,
+  type ThemePreference,
+} from "./utils/theme";
 
 const router = useRouter();
 const route = useRoute();
@@ -265,6 +319,10 @@ const docsDialogVisible = ref(false);
 const announcementsDialogVisible = ref(false);
 const announcementsLoading = ref(false);
 const announcements = ref<Announcement[]>([]);
+const themePreference = ref<ThemePreference>(
+  getInitialThemePreference(window.localStorage),
+);
+const sidebarCollapsed = ref(getInitialSidebarCollapsed(window.localStorage));
 const origin = window.location.origin.replace(/:\d+$/, ":3000");
 const apiHost = computed(() => origin);
 const baseUrl = computed(() => `${origin}/v1`);
@@ -403,6 +461,21 @@ const pageMeta = computed<{ title: string; subtitle: string }>(() => {
 
 const currentPage = computed(() => pageMeta.value);
 const localeLabel = computed(() => (locale.value === "zh-CN" ? "ZH" : "EN"));
+const isDarkTheme = computed({
+  get: () => themePreference.value === "dark",
+  set: (enabled: boolean) => {
+    setThemePreference(enabled ? "dark" : "light");
+  },
+});
+const themeIcon = computed(() => (isDarkTheme.value ? Moon : Sunny));
+const themeSwitchLabel = computed(() =>
+  isDarkTheme.value ? t("common.enabled") : t("common.disabled"),
+);
+const sidebarWidth = computed(() => (sidebarCollapsed.value ? "76px" : "252px"));
+const collapseIcon = computed(() => (sidebarCollapsed.value ? Expand : Fold));
+const collapseToggleLabel = computed(() =>
+  sidebarCollapsed.value ? t("app.expandLabel") : t("app.collapseLabel"),
+);
 const accountName = computed(
   () =>
     ("email" in (auth.user ?? {}) ? auth.user?.email : undefined) ??
@@ -434,6 +507,21 @@ function refreshAnnouncements() {
     .finally(() => {
       announcementsLoading.value = false;
     });
+}
+
+function setThemePreference(preference: ThemePreference) {
+  themePreference.value = preference;
+  applyThemePreference(preference, document.documentElement);
+  persistThemePreference(preference, window.localStorage);
+}
+
+function setThemeFromSwitch(value: string | number | boolean) {
+  setThemePreference(value === true ? "dark" : "light");
+}
+
+function toggleSidebarCollapsed() {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+  persistSidebarCollapsed(sidebarCollapsed.value, window.localStorage);
 }
 
 function logout() {

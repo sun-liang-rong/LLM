@@ -43,10 +43,33 @@ export class ProviderUpstreamError extends Error {
     readonly kind: ProviderErrorKind,
     readonly statusCode?: number,
     readonly body?: string,
+    readonly retryAfterMs?: number,
   ) {
     super(message);
     this.name = "ProviderUpstreamError";
   }
+}
+
+export function parseRetryAfterMs(
+  value: string | string[] | undefined,
+  now = Date.now(),
+) {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw) {
+    return undefined;
+  }
+
+  const seconds = Number(raw);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.ceil(seconds * 1000);
+  }
+
+  const dateMs = Date.parse(raw);
+  if (Number.isNaN(dateMs)) {
+    return undefined;
+  }
+
+  return Math.max(dateMs - now, 0);
 }
 
 export interface ProviderAdapter {

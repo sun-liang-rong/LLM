@@ -63,13 +63,24 @@
         </el-table-column>
         <el-table-column :label="t('common.actions')" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button :icon="Edit" @click="openEditModel(row)" />
-            <el-button
-              v-if="auth.canManageBudgets"
-              :icon="Delete"
-              type="danger"
-              @click="deleteModel(row.id)"
-            />
+            <div class="table-actions">
+              <el-tooltip :content="t('common.edit')" placement="top">
+                <el-button
+                  :icon="Edit"
+                  :aria-label="t('common.edit')"
+                  @click="openEditModel(row)"
+                />
+              </el-tooltip>
+              <el-tooltip :content="t('common.delete')" placement="top">
+                <el-button
+                  v-if="auth.canManageBudgets"
+                  :icon="Delete"
+                  type="danger"
+                  :aria-label="t('common.delete')"
+                  @click="deleteModel(row.id)"
+                />
+              </el-tooltip>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -183,13 +194,24 @@
         </el-table-column>
         <el-table-column :label="t('common.actions')" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button :icon="Edit" @click="openEditBillingGroup(row)" />
-            <el-button
-              v-if="auth.canManageBudgets && !row.isDefault"
-              :icon="Delete"
-              type="danger"
-              @click="deleteBillingGroup(row.id)"
-            />
+            <div class="table-actions">
+              <el-tooltip :content="t('common.edit')" placement="top">
+                <el-button
+                  :icon="Edit"
+                  :aria-label="t('common.edit')"
+                  @click="openEditBillingGroup(row)"
+                />
+              </el-tooltip>
+              <el-tooltip :content="t('common.delete')" placement="top">
+                <el-button
+                  v-if="auth.canManageBudgets && !row.isDefault"
+                  :icon="Delete"
+                  type="danger"
+                  :aria-label="t('common.delete')"
+                  @click="deleteBillingGroup(row.id)"
+                />
+              </el-tooltip>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -262,13 +284,24 @@
         </el-table-column>
         <el-table-column :label="t('common.actions')" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button :icon="Edit" @click="openEditGroup(row)" />
-            <el-button
-              v-if="auth.canManageBudgets"
-              :icon="Delete"
-              type="danger"
-              @click="deleteGroup(row.id)"
-            />
+            <div class="table-actions">
+              <el-tooltip :content="t('common.edit')" placement="top">
+                <el-button
+                  :icon="Edit"
+                  :aria-label="t('common.edit')"
+                  @click="openEditGroup(row)"
+                />
+              </el-tooltip>
+              <el-tooltip :content="t('common.delete')" placement="top">
+                <el-button
+                  v-if="auth.canManageBudgets"
+                  :icon="Delete"
+                  type="danger"
+                  :aria-label="t('common.delete')"
+                  @click="deleteGroup(row.id)"
+                />
+              </el-tooltip>
+            </div>
           </template>
         </el-table-column>
       </el-table>

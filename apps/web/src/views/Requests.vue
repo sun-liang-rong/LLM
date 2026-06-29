@@ -92,9 +92,13 @@
         <el-table-column prop="requestId" :label="t('requests.requestId')" min-width="240" />
         <el-table-column :label="t('requests.detail')" width="110" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openDetail(row.requestId)">
-              {{ t("requests.detail") }}
-            </el-button>
+            <div class="table-actions table-actions-text">
+              <el-tooltip :content="t('requests.detail')" placement="top">
+                <el-button link type="primary" @click="openDetail(row.requestId)">
+                  {{ t("requests.detail") }}
+                </el-button>
+              </el-tooltip>
+            </div>
           </template>
         </el-table-column>
         <el-table-column :label="t('common.error')" min-width="240">

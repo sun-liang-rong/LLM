@@ -29,6 +29,7 @@ export const useCreditsStore = defineStore("credits", {
       page: 1,
       pageSize: 20,
       userId: "",
+      type: "",
     },
     userRows: [] as AdminCreditUser[],
     userTotal: 0,
@@ -55,6 +56,9 @@ export const useCreditsStore = defineStore("credits", {
         params.set("pageSize", String(this.ledgerFilters.pageSize));
         if (!auth.isPortalUser && this.ledgerFilters.userId) {
           params.set("userId", this.ledgerFilters.userId);
+        }
+        if (this.ledgerFilters.type) {
+          params.set("type", this.ledgerFilters.type);
         }
         const page = await getJson<Page<CreditLedgerEntry>>(
           `${auth.isPortalUser ? "/console/credits/ledger" : "/admin/credits/ledger"}?${params.toString()}`,
@@ -105,10 +109,10 @@ export const useCreditsStore = defineStore("credits", {
         this.checkInStatus = {
           checkedIn: result.checkedIn,
           checkInDate: result.checkInDate,
-          rewardUsd: result.rewardUsd,
+          rewardUsd: result.ledger?.amountUsd ?? result.rewardUsd,
           nextCheckInDate: result.nextCheckInDate,
         };
-        await Promise.all([this.refreshSummary(), this.refreshLedger()]);
+        await this.refreshLedger();
         return result;
       } finally {
         this.saving = false;

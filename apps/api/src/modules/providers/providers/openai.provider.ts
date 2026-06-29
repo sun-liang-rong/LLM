@@ -8,6 +8,7 @@ import type {
 } from "@gateway/protocol";
 import {
   ProviderUpstreamError,
+  parseRetryAfterMs,
   type ProviderAdapter,
   type ProviderResult,
 } from "./provider-adapter";
@@ -92,6 +93,7 @@ export class OpenAiProvider implements ProviderAdapter {
         this.classifyStatus(response.statusCode),
         response.statusCode,
         text,
+        parseRetryAfterMs(response.headers["retry-after"]),
       );
     }
 

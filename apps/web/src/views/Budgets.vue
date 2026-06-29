@@ -115,7 +115,16 @@
           fixed="right"
         >
           <template #default="{ row }">
-            <el-button :icon="Delete" type="danger" @click="remove(row.id)" />
+            <div class="table-actions">
+              <el-tooltip :content="t('common.delete')" placement="top">
+                <el-button
+                  :icon="Delete"
+                  type="danger"
+                  :aria-label="t('common.delete')"
+                  @click="remove(row.id)"
+                />
+              </el-tooltip>
+            </div>
           </template>
         </el-table-column>
       </el-table>

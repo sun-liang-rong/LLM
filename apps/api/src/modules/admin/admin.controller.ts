@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
+import type { CreditLedgerType } from "@gateway/shared";
 import { ApiKeyService } from "../auth/api-key.service";
 import { AlertService } from "../billing/alert.service";
 import { BudgetService } from "../billing/budget.service";
@@ -174,9 +175,11 @@ export class AdminController {
     @Query("page") page?: string,
     @Query("pageSize") pageSize?: string,
     @Query("userId") userId?: string,
+    @Query("type") type?: string,
   ) {
     return this.credits.ledger({
       userId,
+      type: this.parseLedgerType(type),
       page: page ? Number(page) : undefined,
       pageSize: pageSize ? Number(pageSize) : undefined,
     });
@@ -570,5 +573,15 @@ export class AdminController {
   @AdminRoles("admin")
   deleteApiKey(@Param("id") id: string) {
     return this.apiKeys.delete(id);
+  }
+
+  private parseLedgerType(value?: string): CreditLedgerType | undefined {
+    return value === "signup_bonus" ||
+      value === "checkin" ||
+      value === "usage" ||
+      value === "admin_adjust" ||
+      value === "expired"
+      ? value
+      : undefined;
   }
 }

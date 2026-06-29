@@ -53,7 +53,7 @@
           </div>
           <p>{{ provider.slug ?? provider.provider }} · {{ provider.baseUrl }}</p>
         </div>
-        <div class="actions">
+        <div class="actions table-actions">
           <el-tag :type="provider.enabled ? 'success' : 'info'">
             {{ provider.enabled ? t("common.enabled") : t("common.disabled") }}
           </el-tag>
@@ -161,31 +161,33 @@
         </el-table-column>
         <el-table-column :label="t('common.actions')" width="230" fixed="right">
           <template #default="{ row }">
-            <el-tooltip :content="t('providers.toggleKey')" placement="top">
-              <el-button
-                v-if="auth.canOperateRoutes"
-                :icon="SwitchButton"
-                :aria-label="t('providers.toggleKey')"
-                @click="toggleKey(row)"
-              />
-            </el-tooltip>
-            <el-tooltip :content="t('common.reset')" placement="top">
-              <el-button
-                v-if="auth.canOperateRoutes"
-                :icon="RefreshLeft"
-                :aria-label="t('common.reset')"
-                @click="resetKey(row.id)"
-              />
-            </el-tooltip>
-            <el-tooltip :content="t('common.delete')" placement="top">
-              <el-button
-                v-if="auth.canManageBudgets"
-                :icon="Delete"
-                type="danger"
-                :aria-label="t('common.delete')"
-                @click="deleteKey(row.id)"
-              />
-            </el-tooltip>
+            <div class="table-actions">
+              <el-tooltip :content="t('providers.toggleKey')" placement="top">
+                <el-button
+                  v-if="auth.canOperateRoutes"
+                  :icon="SwitchButton"
+                  :aria-label="t('providers.toggleKey')"
+                  @click="toggleKey(row)"
+                />
+              </el-tooltip>
+              <el-tooltip :content="t('common.reset')" placement="top">
+                <el-button
+                  v-if="auth.canOperateRoutes"
+                  :icon="RefreshLeft"
+                  :aria-label="t('common.reset')"
+                  @click="resetKey(row.id)"
+                />
+              </el-tooltip>
+              <el-tooltip :content="t('common.delete')" placement="top">
+                <el-button
+                  v-if="auth.canManageBudgets"
+                  :icon="Delete"
+                  type="danger"
+                  :aria-label="t('common.delete')"
+                  @click="deleteKey(row.id)"
+                />
+              </el-tooltip>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -344,6 +346,7 @@ import {
   type ProviderRow,
   useProvidersStore,
 } from "../stores/providers";
+import { normalizeProviderPayload } from "../utils/provider-form";
 
 const auth = useAuthStore();
 const store = useProvidersStore();
@@ -466,7 +469,7 @@ function pagedProviderKeys(provider: ProviderRow) {
 async function saveProvider() {
   savingProvider.value = true;
   try {
-    const savedProvider = await store.saveProvider({
+    const result = normalizeProviderPayload({
       id: providerForm.id || undefined,
       name: providerForm.name,
       slug: providerForm.slug,
@@ -474,6 +477,11 @@ async function saveProvider() {
       baseUrl: providerForm.baseUrl,
       enabled: providerForm.enabled,
     });
+    if (!result.ok) {
+      throw new Error(result.message);
+    }
+
+    const savedProvider = await store.saveProvider(result.payload);
 
     if (!providerForm.id && providerForm.secret) {
       await store.createKey({

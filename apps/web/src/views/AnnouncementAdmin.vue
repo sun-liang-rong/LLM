@@ -36,8 +36,23 @@
         </el-table-column>
         <el-table-column :label="t('common.actions')" width="160" fixed="right">
           <template #default="{ row }">
-            <el-button :icon="Edit" @click="openEdit(row)" />
-            <el-button :icon="Delete" type="danger" @click="deleteItem(row.id)" />
+            <div class="table-actions">
+              <el-tooltip :content="t('common.edit')" placement="top">
+                <el-button
+                  :icon="Edit"
+                  :aria-label="t('common.edit')"
+                  @click="openEdit(row)"
+                />
+              </el-tooltip>
+              <el-tooltip :content="t('common.delete')" placement="top">
+                <el-button
+                  :icon="Delete"
+                  type="danger"
+                  :aria-label="t('common.delete')"
+                  @click="deleteItem(row.id)"
+                />
+              </el-tooltip>
+            </div>
           </template>
         </el-table-column>
       </el-table>

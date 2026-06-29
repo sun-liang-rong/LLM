@@ -81,6 +81,14 @@ balance: charged after usage</code></pre>
         </article>
       </div>
     </section>
+
+    <section class="public-section">
+      <div class="public-section-title">
+        <h2>{{ t("public.models") }}</h2>
+        <RouterLink to="/models">{{ t("public.allModels") }}</RouterLink>
+      </div>
+      <PublicModelMarket :limit="6" :show-header="false" :show-filters="false" />
+    </section>
   </main>
 </template>
 
@@ -90,6 +98,7 @@ import { RouterLink } from "vue-router";
 import { Connection, Money, Wallet } from "@element-plus/icons-vue";
 import { useI18n } from "../i18n";
 import { usePublicModelsStore } from "../stores/public-models";
+import PublicModelMarket from "../components/PublicModelMarket.vue";
 
 const { t } = useI18n();
 const models = usePublicModelsStore();

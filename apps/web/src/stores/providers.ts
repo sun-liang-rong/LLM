@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { apiFetch, getJson } from "../api/client";
+import { apiFetch, getJson, responseErrorMessage } from "../api/client";
 
 export interface ProviderKeyRow {
   id: string;
@@ -88,7 +88,7 @@ export const useProvidersStore = defineStore("providers", {
         body: JSON.stringify(payload),
       });
       if (!response.ok) {
-        throw new Error(`Save provider failed: ${response.status}`);
+        throw new Error(await responseErrorMessage(response, "Save provider failed"));
       }
       const saved = (await response.json()) as ProviderRow;
       await this.refresh();

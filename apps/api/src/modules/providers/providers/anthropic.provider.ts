@@ -8,6 +8,7 @@ import type {
 } from "@gateway/protocol";
 import {
   ProviderUpstreamError,
+  parseRetryAfterMs,
   type ProviderAdapter,
   type ProviderResult,
 } from "./provider-adapter";
@@ -90,6 +91,7 @@ export class AnthropicProvider implements ProviderAdapter {
         this.classifyStatus(response.statusCode),
         response.statusCode,
         text,
+        parseRetryAfterMs(response.headers["retry-after"]),
       );
     }
 
@@ -367,6 +369,7 @@ export class AnthropicProvider implements ProviderAdapter {
       : ["x-api-key", "bearer", "both"];
     let lastStatusCode = 0;
     let lastText = "";
+    let lastRetryAfterMs: number | undefined;
 
     for (const authMode of authModes) {
       const response = await this.send(url, {
@@ -380,6 +383,7 @@ export class AnthropicProvider implements ProviderAdapter {
       }
 
       lastStatusCode = response.statusCode;
+      lastRetryAfterMs = parseRetryAfterMs(response.headers["retry-after"]);
       lastText = await response.body.text();
     }
 
@@ -389,6 +393,7 @@ export class AnthropicProvider implements ProviderAdapter {
       this.classifyStatus(lastStatusCode),
       lastStatusCode,
       lastText,
+      lastRetryAfterMs,
     );
   }
 

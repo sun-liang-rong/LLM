@@ -56,32 +56,42 @@
         </el-table-column>
         <el-table-column :label="t('common.actions')" width="260" fixed="right">
           <template #default="{ row }">
-            <el-button
-              :icon="View"
-              :aria-label="t('modelRoutes.explain')"
-              @click="explainAlias(row.alias)"
-            />
-            <el-button
-              v-if="auth.canOperateRoutes"
-              :icon="VideoPlay"
-              :loading="testingAlias === row.alias"
-              type="primary"
-              :aria-label="t('modelRoutes.test')"
-              @click="testAlias(row.alias)"
-            />
-            <el-button
-              v-if="auth.canOperateRoutes"
-              :icon="Edit"
-              :aria-label="t('common.edit')"
-              @click="openEdit(row)"
-            />
-            <el-button
-              v-if="auth.canManageBudgets"
-              :icon="Delete"
-              type="danger"
-              :aria-label="t('common.delete')"
-              @click="deleteAlias(row.alias)"
-            />
+            <div class="table-actions">
+              <el-tooltip :content="t('modelRoutes.explain')" placement="top">
+                <el-button
+                  :icon="View"
+                  :aria-label="t('modelRoutes.explain')"
+                  @click="explainAlias(row.alias)"
+                />
+              </el-tooltip>
+              <el-tooltip :content="t('modelRoutes.test')" placement="top">
+                <el-button
+                  v-if="auth.canOperateRoutes"
+                  :icon="VideoPlay"
+                  :loading="testingAlias === row.alias"
+                  type="primary"
+                  :aria-label="t('modelRoutes.test')"
+                  @click="testAlias(row.alias)"
+                />
+              </el-tooltip>
+              <el-tooltip :content="t('common.edit')" placement="top">
+                <el-button
+                  v-if="auth.canOperateRoutes"
+                  :icon="Edit"
+                  :aria-label="t('common.edit')"
+                  @click="openEdit(row)"
+                />
+              </el-tooltip>
+              <el-tooltip :content="t('common.delete')" placement="top">
+                <el-button
+                  v-if="auth.canManageBudgets"
+                  :icon="Delete"
+                  type="danger"
+                  :aria-label="t('common.delete')"
+                  @click="deleteAlias(row.alias)"
+                />
+              </el-tooltip>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -124,12 +134,15 @@
           >
             <div class="title-row">
               <strong>{{ t("dashboard.target") }} {{ index + 1 }}</strong>
-              <el-button
-                v-if="form.targets.length > 1"
-                :icon="Delete"
-                type="danger"
-                @click="removeTarget(index)"
-              />
+              <el-tooltip :content="t('common.delete')" placement="top">
+                <el-button
+                  v-if="form.targets.length > 1"
+                  :icon="Delete"
+                  type="danger"
+                  :aria-label="t('common.delete')"
+                  @click="removeTarget(index)"
+                />
+              </el-tooltip>
             </div>
             <el-form-item :label="t('common.provider')">
               <el-select

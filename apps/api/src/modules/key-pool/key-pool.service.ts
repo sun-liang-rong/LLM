@@ -4,6 +4,7 @@ import type { ProviderId, ProviderKeySummary } from "@gateway/shared";
 import { PrismaService } from "../database/prisma.service";
 import type { ProviderErrorKind } from "../providers/providers/provider-adapter";
 import { KeyCryptoService } from "../security/key-crypto.service";
+import { orderedWeightedCandidates } from "./key-pool-scheduler.util";
 
 export interface ProviderKey {
   id: string;
@@ -53,9 +54,9 @@ export class KeyPoolService {
       return candidates;
     }
 
-    const offset = this.cursor % candidates.length;
-    this.cursor += 1;
-    const ordered = [...candidates.slice(offset), ...candidates.slice(0, offset)];
+    const result = orderedWeightedCandidates(candidates, this.cursor);
+    this.cursor = result.nextCursor;
+    const ordered = result.ordered;
     return ordered;
   }
 
@@ -171,13 +172,14 @@ export class KeyPoolService {
     keyId: string,
     kind: ProviderErrorKind,
     message: string,
+    retryAfterMs?: number,
   ) {
     if (this.isEnvKey(keyId)) {
       return;
     }
 
     const status = this.statusForFailure(kind);
-    const cooldownUntil = await this.cooldownUntil(keyId, kind);
+    const cooldownUntil = await this.cooldownUntil(keyId, kind, retryAfterMs);
     await this.prisma.providerKey.update({
       where: { id: keyId },
       data: {
@@ -303,12 +305,19 @@ export class KeyPoolService {
     return "cooldown";
   }
 
-  private async cooldownUntil(keyId: string, kind: ProviderErrorKind) {
+  private async cooldownUntil(
+    keyId: string,
+    kind: ProviderErrorKind,
+    retryAfterMs?: number,
+  ) {
     if (kind === "auth") {
       return null;
     }
 
     if (kind === "rate_limit") {
+      if (retryAfterMs !== undefined) {
+        return new Date(Date.now() + retryAfterMs);
+      }
       const key = await this.prisma.providerKey.findUnique({ where: { id: keyId } });
       if (key?.windowStartedAt) {
         return new Date(

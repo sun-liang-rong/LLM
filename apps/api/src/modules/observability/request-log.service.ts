@@ -138,7 +138,18 @@ export class RequestLogService {
     granularity?: string;
   }): Promise<DashboardOverview> {
     const start = this.rangeStart(query?.range);
-    const [usage, providerRows, apiKeys, requestTotals, trend] = await Promise.all([
+    const activeStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const [
+      usage,
+      providerRows,
+      apiKeys,
+      requestTotals,
+      lifetimeTotals,
+      totalRequests,
+      userCount,
+      activeUsers,
+      trend,
+    ] = await Promise.all([
       this.overview(query),
       this.providerBreakdown(start),
       this.prisma.apiKey.findMany({
@@ -155,58 +166,69 @@ export class RequestLogService {
           totalTokens: true,
         },
       }),
+      this.prisma.requestLog.aggregate({
+        where: { status: "completed" },
+        _sum: {
+          costUsd: true,
+          totalTokens: true,
+        },
+      }),
+      this.prisma.requestLog.count({}),
+      this.prisma.user.count({}),
+      this.prisma.user.count({
+        where: {
+          lastLoginAt: { gte: activeStart },
+        },
+      }),
       this.trend(start, query?.granularity),
     ]);
 
     const enabledApiKeys = apiKeys.filter((key) => key.enabled).length;
-    const totalBalanceUsd = apiKeys.reduce(
-      (sum, key) => sum + (key.dailyBudgetUsd ?? 0),
-      0,
-    );
     const totalSpentUsd = Number((requestTotals._sum.costUsd ?? 0).toFixed(8));
-    const totalTokens = requestTotals._sum.totalTokens ?? 0;
+    const totalTokens = lifetimeTotals._sum.totalTokens ?? 0;
+    const totalCostUsd = Number((lifetimeTotals._sum.costUsd ?? 0).toFixed(8));
     const averageLatencyMs =
       usage.requestsToday > 0 ? Math.round(usage.p95LatencyMs * 0.82) : 0;
 
     return {
       topMetrics: [
         {
-          label: "balance",
-          value: this.formatCurrency(Math.max(totalBalanceUsd - usage.costTodayUsd, 0)),
-          caption: "available",
+          label: "totalRequests",
+          value: this.formatInteger(totalRequests),
+          caption: "platform total",
           emphasis: true,
-        },
-        {
-          label: "apiKeys",
-          value: String(apiKeys.length),
-          caption: `${enabledApiKeys} active`,
-        },
-        {
-          label: "requestsToday",
-          value: this.formatInteger(usage.requestsToday),
-          caption: `total: ${this.formatInteger(usage.requestsToday)}`,
-        },
-        {
-          label: "todaySpend",
-          value: this.formatCurrency(usage.costTodayUsd),
-          caption: `total: ${this.formatCurrency(totalSpentUsd)}`,
-        },
-      ],
-      secondaryMetrics: [
-        {
-          label: "tokensToday",
-          value: this.formatCompact(usage.tokensToday),
-          caption: "input / output synced",
         },
         {
           label: "totalTokens",
           value: this.formatCompact(totalTokens),
-          caption: "lifetime usage",
+          caption: "platform total",
         },
         {
-          label: "performance",
-          value: String(Math.max(1, Math.round(usage.requestsToday / 60))),
-          caption: "RPM",
+          label: "userCount",
+          value: this.formatInteger(userCount),
+          caption: "registered users",
+        },
+        {
+          label: "activeUsers",
+          value: this.formatInteger(activeUsers),
+          caption: "last 30 days",
+        },
+      ],
+      secondaryMetrics: [
+        {
+          label: "windowTokens",
+          value: this.formatCompact(usage.tokensToday),
+          caption: "selected window",
+        },
+        {
+          label: "windowRequests",
+          value: this.formatInteger(usage.requestsToday),
+          caption: "selected window",
+        },
+        {
+          label: "apiKeys",
+          value: this.formatInteger(apiKeys.length),
+          caption: `${enabledApiKeys} active`,
         },
         {
           label: "avgLatency",
@@ -228,6 +250,7 @@ export class RequestLogService {
 
   async tenantDashboardOverview(
     tenantId: string,
+    userId?: string,
     query?: {
       range?: string;
       granularity?: string;
@@ -249,7 +272,10 @@ export class RequestLogService {
       }),
       this.tenantTrend(tenantId, start, query?.granularity),
       this.prisma.apiKey.findMany({
-        where: { tenantId },
+        where: {
+          tenantId,
+          userId,
+        },
         select: {
           id: true,
           enabled: true,

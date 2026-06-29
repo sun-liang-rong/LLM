@@ -210,7 +210,12 @@ export class GatewayService {
         } catch (error) {
           lastError = error;
           if (error instanceof ProviderUpstreamError) {
-            await this.keyPool.reportFailure(key.id, error.kind, error.message);
+            await this.keyPool.reportFailure(
+              key.id,
+              error.kind,
+              error.message,
+              error.retryAfterMs,
+            );
           }
           if (retryCount === keys.length - 1) {
             break;

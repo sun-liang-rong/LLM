@@ -37,8 +37,8 @@
       </article>
       <article class="metric metric-reference">
         <span>{{ t("checkIn.reward") }}</span>
-        <strong>+{{ money(credits.summary?.dailyRewardUsd ?? credits.checkInStatus?.rewardUsd ?? 0) }}</strong>
-        <small>{{ t("credits.available") }}</small>
+        <strong>{{ rewardLabel }}</strong>
+        <small>{{ rewardCaption }}</small>
       </article>
       <article class="metric metric-reference">
         <span>{{ t("checkIn.nextDate") }}</span>
@@ -67,6 +67,7 @@
           type="primary"
           class="notice-button"
           :loading="credits.saving"
+          :disabled="credits.summary?.todayCheckedIn"
           @click="checkIn"
         >
           {{
@@ -83,7 +84,7 @@
         <h3>{{ t("checkIn.history") }}</h3>
         <span class="panel-meta">{{ credits.ledgerTotal }}</span>
       </div>
-      <el-table :data="checkInRows">
+      <el-table :data="credits.ledgerRows">
         <el-table-column prop="createdAt" :label="t('requests.time')" min-width="190">
           <template #default="{ row }">
             {{ new Date(row.createdAt).toLocaleString() }}
@@ -113,7 +114,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, onMounted, onUnmounted } from "vue";
 import { ElMessage } from "element-plus";
 import { useI18n } from "../i18n";
 import { useCreditsStore } from "../stores/credits";
@@ -122,17 +123,24 @@ import { formatUsd } from "../utils/money";
 const { t } = useI18n();
 const credits = useCreditsStore();
 
-const checkInRows = computed(() =>
-  credits.ledgerRows.filter((row) => row.type === "checkin"),
+const money = formatUsd;
+const rewardLabel = computed(() => {
+  if (!credits.summary?.todayCheckedIn) {
+    return t("credits.notCheckedIn");
+  }
+  return `+${money(credits.checkInStatus?.rewardUsd ?? 0)}`;
+});
+const rewardCaption = computed(() =>
+  credits.summary?.todayCheckedIn ? t("credits.available") : "-",
 );
 
-const money = formatUsd;
-
 async function refresh() {
+  credits.ledgerFilters.type = "checkin";
   await Promise.all([credits.refreshSummary(), credits.refreshLedger()]);
 }
 
 async function checkIn() {
+  if (credits.summary?.todayCheckedIn) return;
   try {
     const result = await credits.checkIn();
     ElMessage.success(
@@ -149,6 +157,12 @@ function refreshLedgerFromFirstPage() {
 }
 
 onMounted(() => {
+  credits.ledgerFilters.type = "checkin";
+  credits.ledgerFilters.page = 1;
   void refresh();
+});
+
+onUnmounted(() => {
+  credits.ledgerFilters.type = "";
 });
 </script>

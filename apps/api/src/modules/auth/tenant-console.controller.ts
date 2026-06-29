@@ -11,7 +11,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import type { PortalProfile } from "@gateway/shared";
+import type { CreditLedgerType, PortalProfile } from "@gateway/shared";
 import { ApiKeyService } from "./api-key.service";
 import { TenantAuthGuard } from "./tenant-auth.guard";
 import { TenantAuthService } from "./tenant-auth.service";
@@ -126,7 +126,7 @@ export class TenantConsoleController {
     const user = this.auth.verify(this.auth.extractAuthorization(headers));
     return {
       usage: await this.logs.tenantOverview(user.tenantId, { range, granularity }),
-      dashboard: await this.logs.tenantDashboardOverview(user.tenantId, {
+      dashboard: await this.logs.tenantDashboardOverview(user.tenantId, user.sub, {
         range,
         granularity,
       }),
@@ -206,11 +206,13 @@ export class TenantConsoleController {
     @Headers() headers: Record<string, unknown>,
     @Query("page") page?: string,
     @Query("pageSize") pageSize?: string,
+    @Query("type") type?: string,
   ) {
     const user = this.auth.verify(this.auth.extractAuthorization(headers));
     return this.credits.ledger({
       userId: user.sub,
       tenantId: user.tenantId,
+      type: this.parseLedgerType(type),
       page: page ? Number(page) : undefined,
       pageSize: pageSize ? Number(pageSize) : undefined,
     });
@@ -380,5 +382,15 @@ export class TenantConsoleController {
     } catch {
       return [];
     }
+  }
+
+  private parseLedgerType(value?: string): CreditLedgerType | undefined {
+    return value === "signup_bonus" ||
+      value === "checkin" ||
+      value === "usage" ||
+      value === "admin_adjust" ||
+      value === "expired"
+      ? value
+      : undefined;
   }
 }

@@ -82,9 +82,11 @@
         <p>{{ t("onboarding.stepBaseUrlText") }}</p>
         <div class="copy-input">
           <el-input :model-value="baseUrl" readonly />
-          <el-button :icon="CopyDocument" @click="copyText(baseUrl)">
-            {{ t("common.copy") }}
-          </el-button>
+          <el-tooltip :content="t('common.copy')" placement="top">
+            <el-button :icon="CopyDocument" @click="copyText(baseUrl)">
+              {{ t("common.copy") }}
+            </el-button>
+          </el-tooltip>
         </div>
       </article>
 
@@ -98,9 +100,11 @@
         <p>{{ t("onboarding.stepRequestText") }}</p>
         <pre class="docs-code"><code>{{ requestExample }}</code></pre>
         <div class="actions">
-          <el-button :icon="CopyDocument" @click="copyText(requestExample)">
-            {{ t("onboarding.copyExample") }}
-          </el-button>
+          <el-tooltip :content="t('onboarding.copyExample')" placement="top">
+            <el-button :icon="CopyDocument" @click="copyText(requestExample)">
+              {{ t("onboarding.copyExample") }}
+            </el-button>
+          </el-tooltip>
           <el-button
             v-if="hasFirstRequest"
             type="primary"
@@ -121,9 +125,11 @@
       />
       <div class="copy-input">
         <el-input v-model="createdKey" readonly />
-        <el-button :icon="CopyDocument" @click="copyText(createdKey)">
-          {{ t("common.copy") }}
-        </el-button>
+        <el-tooltip :content="t('common.copy')" placement="top">
+          <el-button :icon="CopyDocument" @click="copyText(createdKey)">
+            {{ t("common.copy") }}
+          </el-button>
+        </el-tooltip>
       </div>
     </el-dialog>
   </section>

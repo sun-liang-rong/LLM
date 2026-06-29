@@ -50,13 +50,14 @@
         </div>
         <div class="notice-side">
           <div class="notice-spend">
-            <strong>+{{ money(store.summary?.dailyRewardUsd ?? 0) }}</strong>
+            <strong>{{ checkInRewardLabel }}</strong>
             <span>{{ t("credits.expiresHint") }}</span>
           </div>
           <el-button
             type="primary"
             class="notice-button"
             :loading="store.saving"
+            :disabled="store.summary?.todayCheckedIn"
             @click="checkIn"
           >
             {{
@@ -97,12 +98,18 @@
           </el-table-column>
           <el-table-column :label="t('common.actions')" width="180" fixed="right">
             <template #default="{ row }">
-              <el-button link type="primary" @click="openAdjust(row.userId)">
-                {{ t("credits.adjust") }}
-              </el-button>
-              <el-button link type="primary" @click="filterLedger(row.userId)">
-                {{ t("credits.ledger") }}
-              </el-button>
+              <div class="table-actions table-actions-text">
+                <el-tooltip :content="t('credits.adjust')" placement="top">
+                  <el-button link type="primary" @click="openAdjust(row.userId)">
+                    {{ t("credits.adjust") }}
+                  </el-button>
+                </el-tooltip>
+                <el-tooltip :content="t('credits.ledger')" placement="top">
+                  <el-button link type="primary" @click="filterLedger(row.userId)">
+                    {{ t("credits.ledger") }}
+                  </el-button>
+                </el-tooltip>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -193,7 +200,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 import { useI18n } from "../i18n";
 import { useAuthStore } from "../stores/auth";
@@ -211,6 +218,12 @@ const adjustForm = reactive({
 });
 
 const money = formatUsd;
+const checkInRewardLabel = computed(() => {
+  if (!store.summary?.todayCheckedIn) {
+    return t("credits.notCheckedIn");
+  }
+  return `+${money(store.checkInStatus?.rewardUsd ?? 0)}`;
+});
 
 function ledgerType(type: string) {
   const mapping: Record<string, ReturnType<typeof t>> = {
@@ -233,6 +246,7 @@ async function refresh() {
 }
 
 async function checkIn() {
+  if (store.summary?.todayCheckedIn) return;
   try {
     const result = await store.checkIn();
     ElMessage.success(

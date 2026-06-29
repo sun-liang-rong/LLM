@@ -89,9 +89,13 @@ export class CreditService {
     return {
       checkedIn: Boolean(record),
       checkInDate: today,
-      rewardUsd: this.creditsToUsd(
-        this.centsToCredits(await this.platformConfig.randomDailyCheckInCents()),
-      ),
+      rewardUsd: record
+        ? this.creditsToUsd(record.rewardCredits)
+        : this.creditsToUsd(
+            this.centsToCredits(
+              await this.platformConfig.randomDailyCheckInCents(),
+            ),
+          ),
       nextCheckInDate: this.nextShanghaiDate(),
     };
   }
@@ -154,6 +158,7 @@ export class CreditService {
     input: {
       userId?: string;
       tenantId?: string;
+      type?: CreditLedgerType;
       page?: number;
       pageSize?: number;
     } = {},
@@ -163,6 +168,7 @@ export class CreditService {
     const where = {
       userId: input.userId,
       tenantId: input.tenantId,
+      type: input.type,
     };
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.creditLedger.findMany({
@@ -539,7 +545,7 @@ export class CreditService {
   }
 
   private formatUsd(value?: number) {
-    return `$${Number(value ?? 0).toFixed(8)}`;
+    return `$${Number(value ?? 0).toFixed(6)}`;
   }
 
   private creditsToUsd(value: CreditValue) {

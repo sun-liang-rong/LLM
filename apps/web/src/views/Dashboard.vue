@@ -61,20 +61,21 @@
         </article>
       </div>
 
-      <section class="panel notice-panel">
+      <section v-if="auth.isPortalUser" class="panel notice-panel">
         <div class="notice-copy">
           <h3>{{ notice.title }}</h3>
           <p>{{ notice.text }}</p>
         </div>
         <div class="notice-side">
-          <div class="notice-spend">
-            <strong>{{ notice.spendLabel }}</strong>
-            <span>{{ notice.hint }}</span>
+          <div v-if="todayCheckInRewardLabel" class="notice-spend">
+            <strong>{{ todayCheckInRewardLabel }}</strong>
+            <span>{{ t("checkIn.reward") }}</span>
           </div>
           <el-button
             type="primary"
             class="notice-button"
             :loading="credits.saving"
+            :disabled="auth.isPortalUser && credits.summary?.todayCheckedIn"
             @click="handleNoticeAction"
           >
             {{ notice.actionLabel }}
@@ -156,48 +157,144 @@
             <div class="trend-line-card">
               <svg
                 class="trend-line-chart"
-                viewBox="0 0 720 260"
+                viewBox="0 0 720 300"
                 role="img"
                 :aria-label="t('dashboard.trendTitle')"
+                @mouseleave="activeTrendIndex = null"
               >
-                <line x1="48" y1="28" x2="48" y2="212" class="trend-axis" />
-                <line x1="48" y1="212" x2="692" y2="212" class="trend-axis" />
                 <line
-                  v-for="line in chartGuideLines"
-                  :key="line"
-                  x1="48"
-                  :y1="line"
-                  x2="692"
-                  :y2="line"
-                  class="trend-guide"
+                  :x1="trendChart.left"
+                  :y1="trendChart.top"
+                  :x2="trendChart.left"
+                  :y2="trendChart.bottom"
+                  class="trend-axis"
                 />
+                <line
+                  :x1="trendChart.left"
+                  :y1="trendChart.bottom"
+                  :x2="trendChart.right"
+                  :y2="trendChart.bottom"
+                  class="trend-axis"
+                />
+                <line
+                  :x1="trendChart.right"
+                  :y1="trendChart.top"
+                  :x2="trendChart.right"
+                  :y2="trendChart.bottom"
+                  class="trend-axis trend-axis-secondary"
+                />
+                <g
+                  v-for="tick in trendChart.requestTicks"
+                  :key="`request-tick-${tick.label}`"
+                >
+                  <line
+                    :x1="trendChart.left"
+                    :y1="tick.y"
+                    :x2="trendChart.right"
+                    :y2="tick.y"
+                    class="trend-guide"
+                  />
+                  <text
+                    :x="trendChart.left - 10"
+                    :y="tick.y + 4"
+                    text-anchor="end"
+                    class="trend-axis-label"
+                  >
+                    {{ tick.label }}
+                  </text>
+                </g>
+                <text
+                  v-for="tick in trendChart.costTicks"
+                  :key="`cost-tick-${tick.label}`"
+                  :x="trendChart.right + 10"
+                  :y="tick.y + 4"
+                  class="trend-axis-label trend-axis-label-cost"
+                >
+                  {{ tick.label }}
+                </text>
+                <text
+                  v-for="label in trendChart.xLabels"
+                  :key="label.label"
+                  :x="label.x"
+                  :y="trendChart.bottom + 28"
+                  text-anchor="middle"
+                  class="trend-axis-label trend-x-label"
+                >
+                  {{ label.label }}
+                </text>
                 <polyline
-                  :points="lineChartPoints"
+                  :points="trendChart.requestLine"
                   fill="none"
                   class="trend-line trend-line-requests"
                 />
                 <polyline
-                  :points="costLineChartPoints"
+                  :points="trendChart.costLine"
                   fill="none"
                   class="trend-line trend-line-cost"
                 />
+                <g v-if="activeTrendPoint" class="trend-crosshair">
+                  <line
+                    :x1="activeTrendPoint.x"
+                    :y1="trendChart.top"
+                    :x2="activeTrendPoint.x"
+                    :y2="trendChart.bottom"
+                  />
+                  <line
+                    :x1="trendChart.left"
+                    :y1="activeTrendPoint.requestY"
+                    :x2="trendChart.right"
+                    :y2="activeTrendPoint.requestY"
+                  />
+                </g>
                 <circle
-                  v-for="point in lineChartDots"
-                  :key="`request-${point.label}`"
+                  v-for="point in trendChart.points"
+                  :key="`request-${point.bucket}`"
                   :cx="point.x"
                   :cy="point.requestY"
-                  r="4"
+                  :r="activeTrendPoint?.bucket === point.bucket ? 6 : 4"
                   class="trend-dot trend-dot-requests"
                 />
                 <circle
-                  v-for="point in lineChartDots"
-                  :key="`cost-${point.label}`"
+                  v-for="point in trendChart.points"
+                  :key="`cost-${point.bucket}`"
                   :cx="point.x"
                   :cy="point.costY"
-                  r="4"
+                  :r="activeTrendPoint?.bucket === point.bucket ? 6 : 4"
                   class="trend-dot trend-dot-cost"
                 />
+                <rect
+                  v-for="(point, index) in trendChart.points"
+                  :key="`hit-${point.bucket}`"
+                  :x="point.hitX"
+                  :y="trendChart.top"
+                  :width="point.hitWidth"
+                  :height="trendChart.plotHeight"
+                  class="trend-hit-area"
+                  @mouseenter="activeTrendIndex = index"
+                  @mousemove="activeTrendIndex = index"
+                />
               </svg>
+              <div
+                v-if="activeTrendPoint"
+                class="trend-tooltip"
+                :style="trendTooltipStyle"
+              >
+                <strong>{{ activeTrendPoint.tooltip.bucket }}</strong>
+                <span>
+                  <i class="trend-legend-dot trend-legend-requests" />
+                  {{ t("dashboard.requestsToday") }}
+                  <b>{{ activeTrendPoint.tooltip.requests }}</b>
+                </span>
+                <span>
+                  <i class="trend-legend-dot trend-legend-cost" />
+                  {{ t("dashboard.todaySpend") }}
+                  <b>{{ activeTrendPoint.tooltip.cost }}</b>
+                </span>
+                <span>
+                  {{ t("dashboard.tokensToday") }}
+                  <b>{{ activeTrendPoint.tooltip.tokens }}</b>
+                </span>
+              </div>
               <div class="trend-chart-footer">
                 <span>
                   <i class="trend-legend-dot trend-legend-requests" />
@@ -240,81 +337,6 @@
           :description="t('dashboard.noTraffic')"
         />
       </section>
-
-      <div v-if="!auth.isPortalUser" class="dashboard-columns">
-        <div class="dashboard-column">
-          <section class="panel">
-            <div class="panel-title">
-              <h3>{{ t("dashboard.modelAliases") }}</h3>
-              <span class="panel-meta">{{ aliases.length }}</span>
-            </div>
-            <template v-if="aliases.length > 0">
-              <el-table :data="pagedAliases" :empty-text="t('dashboard.noAliases')">
-                <el-table-column prop="alias" :label="t('dashboard.alias')" min-width="130" />
-                <el-table-column prop="mode" :label="t('dashboard.mode')" width="110" />
-                <el-table-column :label="t('dashboard.target')" min-width="180">
-                  <template #default="{ row }">
-                    {{ row.targets[0]?.providerSlug }}/{{ row.targets[0]?.upstreamModel }}
-                  </template>
-                </el-table-column>
-              </el-table>
-              <div class="pagination-row">
-                <el-pagination
-                  v-model:current-page="aliasPage"
-                  v-model:page-size="aliasPageSize"
-                  :total="aliasTotal"
-                  :page-sizes="[5, 10, 20]"
-                  layout="total, prev, pager, next"
-                  small
-                />
-              </div>
-            </template>
-            <el-empty
-              v-else
-              class="dashboard-empty"
-              :description="t('dashboard.noAliases')"
-            />
-          </section>
-        </div>
-
-        <div class="dashboard-column">
-          <section class="panel">
-            <div class="panel-title">
-              <h3>{{ t("dashboard.providerKeys") }}</h3>
-              <span class="panel-meta">{{ providers.length }}</span>
-            </div>
-            <template v-if="providers.length > 0">
-              <el-table :data="pagedProviders" :empty-text="t('dashboard.noProviderKeys')">
-                <el-table-column prop="name" :label="t('common.name')" min-width="150" />
-                <el-table-column prop="provider" :label="t('common.provider')" width="130" />
-                <el-table-column :label="t('common.status')" width="130">
-                  <template #default="{ row }">
-                    <el-tag :type="row.status === 'healthy' ? 'success' : 'warning'">
-                      {{ row.status }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="weight" :label="t('providers.weight')" width="90" />
-              </el-table>
-              <div class="pagination-row">
-                <el-pagination
-                  v-model:current-page="providerPage"
-                  v-model:page-size="providerPageSize"
-                  :total="providerTotal"
-                  :page-sizes="[5, 10, 20]"
-                  layout="total, prev, pager, next"
-                  small
-                />
-              </div>
-            </template>
-            <el-empty
-              v-else
-              class="dashboard-empty"
-              :description="t('dashboard.noProviderKeys')"
-            />
-          </section>
-        </div>
-      </div>
 
       <section class="panel">
         <div class="panel-title">
@@ -368,6 +390,8 @@ import { useAuthStore } from "../stores/auth";
 import { useCreditsStore } from "../stores/credits";
 import { useOverviewStore } from "../stores/overview";
 import { usePagination } from "../composables/usePagination";
+import { buildTrendChartModel } from "../utils/trend-chart";
+import { formatUsd } from "../utils/money";
 
 const store = useOverviewStore();
 const auth = useAuthStore();
@@ -375,6 +399,7 @@ const credits = useCreditsStore();
 const { t } = useI18n();
 const timeRange = ref("7d");
 const granularity = ref("daily");
+const activeTrendIndex = ref<number | null>(null);
 
 const fallbackUsage = {
   requestsToday: 0,
@@ -398,41 +423,10 @@ const granularityOptions = computed(() => [
 const usage = computed(() => store.data?.usage ?? fallbackUsage);
 const dashboard = computed(() => store.data?.dashboard);
 const providers = computed(() => store.data?.providers ?? []);
-const aliases = computed(() => store.data?.aliases ?? []);
 const recentRequests = computed(() => store.data?.recentRequests ?? []);
 const rawTrendRows = computed(() => dashboard.value?.trend ?? []);
-const providerPager = usePagination(() => providers.value, 5);
-const aliasPager = usePagination(() => aliases.value, 5);
 const requestPager = usePagination(() => recentRequests.value, 10);
-const pagedProviders = computed(() => providerPager.rows.value);
-const pagedAliases = computed(() => aliasPager.rows.value);
 const pagedRecentRequests = computed(() => requestPager.rows.value);
-const providerPage = computed({
-  get: () => providerPager.page.value,
-  set: (value: number) => {
-    providerPager.page.value = value;
-  },
-});
-const providerPageSize = computed({
-  get: () => providerPager.pageSize.value,
-  set: (value: number) => {
-    providerPager.pageSize.value = value;
-  },
-});
-const providerTotal = computed(() => providerPager.total.value);
-const aliasPage = computed({
-  get: () => aliasPager.page.value,
-  set: (value: number) => {
-    aliasPager.page.value = value;
-  },
-});
-const aliasPageSize = computed({
-  get: () => aliasPager.pageSize.value,
-  set: (value: number) => {
-    aliasPager.pageSize.value = value;
-  },
-});
-const aliasTotal = computed(() => aliasPager.total.value);
 const requestPage = computed({
   get: () => requestPager.page.value,
   set: (value: number) => {
@@ -452,7 +446,7 @@ const topMetrics = computed(() =>
     label: metricLabel(metric.label),
     value:
       auth.isPortalUser && metric.label === "balance"
-        ? formatCurrency(credits.summary?.balanceUsd ?? 0)
+        ? formatBalance(credits.summary?.balanceUsd ?? 0)
         : metric.value,
     caption: metricCaption(metric.caption),
     emphasis: metric.emphasis,
@@ -492,13 +486,14 @@ const notice = computed(() => ({
       ? t("credits.checkedIn")
       : t("credits.checkIn")
     : t("dashboard.noticeAction"),
-  spendLabel: auth.isPortalUser
-    ? `$${Number(credits.summary?.balanceUsd ?? 0).toFixed(2)}`
-    : `${t("dashboard.todaySpend")} ${formatCurrency(usage.value.costTodayUsd)}`,
-  hint: auth.isPortalUser
-    ? `+${Number(credits.summary?.dailyRewardUsd ?? 0).toFixed(2)} · ${t("credits.available")}`
-    : t("dashboard.noticeHint"),
 }));
+
+const todayCheckInRewardLabel = computed(() => {
+  if (!auth.isPortalUser || !credits.summary?.todayCheckedIn) {
+    return "";
+  }
+  return formatBalance(credits.checkInStatus?.rewardUsd ?? credits.summary.dailyRewardUsd);
+});
 
 const trendPoints = computed(() => {
   const rows = rawTrendRows.value;
@@ -514,33 +509,36 @@ const trendPoints = computed(() => {
   }));
 });
 
-const chartGuideLines = [64, 110, 156, 202];
 const chartColors = ["#b06044", "#6e867b", "#d3a15f", "#7f6fa8", "#4d7890", "#b35a4f"];
 
-const lineChartDots = computed(() => {
-  const rows = rawTrendRows.value;
-  const maxRequests = Math.max(...rows.map((row) => row.requests), 1);
-  const maxCost = Math.max(...rows.map((row) => row.costUsd), 1);
-  const width = 644;
-  const height = 184;
-  const left = 48;
-  const bottom = 212;
-  const step = rows.length > 1 ? width / (rows.length - 1) : 0;
-  return rows.map((row, index) => ({
-    label: row.bucket,
-    x: rows.length > 1 ? left + step * index : left + width / 2,
-    requestY: bottom - (row.requests / maxRequests) * height,
-    costY: bottom - (row.costUsd / maxCost) * height,
-  }));
+const trendChart = computed(() =>
+  buildTrendChartModel(
+    rawTrendRows.value.map((row) => ({
+      bucket: row.bucket,
+      requests: row.requests,
+      tokens: row.tokens,
+      costUsd: row.costUsd,
+    })),
+  ),
+);
+
+const activeTrendPoint = computed(() => {
+  const index = activeTrendIndex.value;
+  if (index === null) return undefined;
+  return trendChart.value.points[index];
 });
 
-const lineChartPoints = computed(() =>
-  lineChartDots.value.map((point) => `${point.x},${point.requestY}`).join(" "),
-);
-
-const costLineChartPoints = computed(() =>
-  lineChartDots.value.map((point) => `${point.x},${point.costY}`).join(" "),
-);
+const trendTooltipStyle = computed(() => {
+  const point = activeTrendPoint.value;
+  if (!point) return {};
+  const leftPercent = (point.x / trendChart.value.width) * 100;
+  const topPercent =
+    (Math.min(point.requestY, point.costY) / trendChart.value.height) * 100;
+  return {
+    left: `${Math.min(Math.max(leftPercent, 18), 82)}%`,
+    top: `${Math.min(Math.max(topPercent, 16), 70)}%`,
+  };
+});
 
 const pieSlices = computed(() => {
   const rows = rawTrendRows.value.filter((row) => row.requests > 0);
@@ -599,6 +597,10 @@ function formatCurrency(value: number) {
   return `$${Number(value || 0).toFixed(4)}`;
 }
 
+function formatBalance(value: number) {
+  return formatUsd(value);
+}
+
 function formatSeconds(value: number) {
   return `${(Number(value || 0) / 1000).toFixed(2)}s`;
 }
@@ -613,6 +615,11 @@ function metricLabel(key: string) {
     totalTokens: t("dashboard.totalTokens"),
     performance: t("dashboard.performanceLabel"),
     avgLatency: t("dashboard.avgLatency"),
+    totalRequests: t("dashboard.totalRequests"),
+    userCount: t("dashboard.userCount"),
+    activeUsers: t("dashboard.activeUsers"),
+    windowTokens: t("dashboard.windowTokens"),
+    windowRequests: t("dashboard.windowRequests"),
   };
   return mapping[key] ?? key;
 }
@@ -624,6 +631,10 @@ function metricCaption(value: string) {
     "lifetime usage": t("dashboard.outputEstimateHint"),
     "average time": t("dashboard.avgTimeHint"),
     dailyCheckInHint: t("dashboard.noticeHint"),
+    "platform total": t("dashboard.platformTotal"),
+    "registered users": t("dashboard.registeredUsers"),
+    "last 30 days": t("dashboard.last30Days"),
+    "selected window": t("dashboard.selectedWindow"),
   };
   return mapping[value] ?? value;
 }
@@ -640,6 +651,7 @@ function statusType(status: string) {
 
 async function handleNoticeAction() {
   if (!auth.isPortalUser) return;
+  if (credits.summary?.todayCheckedIn) return;
   try {
     const result = await credits.checkIn();
     ElMessage.success(

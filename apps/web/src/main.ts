@@ -3,6 +3,7 @@ import { createPinia } from "pinia";
 import {
   ElAlert,
   ElAside,
+  ElBadge,
   ElButton,
   ElContainer,
   ElDescriptions,
@@ -36,6 +37,7 @@ import {
 } from "element-plus";
 import "element-plus/es/components/alert/style/css";
 import "element-plus/es/components/aside/style/css";
+import "element-plus/es/components/badge/style/css";
 import "element-plus/es/components/button/style/css";
 import "element-plus/es/components/container/style/css";
 import "element-plus/es/components/descriptions/style/css";
@@ -66,10 +68,17 @@ import "element-plus/es/components/table/style/css";
 import "element-plus/es/components/table-column/style/css";
 import "element-plus/es/components/tag/style/css";
 import "element-plus/es/components/tooltip/style/css";
+import "element-plus/theme-chalk/dark/css-vars.css";
 import App from "./App.vue";
 import { router } from "./router";
 import { useAuthStore } from "./stores/auth";
+import { applyThemePreference, getInitialThemePreference } from "./utils/theme";
 import "./styles.css";
+
+applyThemePreference(
+  getInitialThemePreference(window.localStorage),
+  document.documentElement,
+);
 
 const app = createApp(App);
 
@@ -79,6 +88,7 @@ app.use(pinia);
 app.use(router);
 app.component("ElAlert", ElAlert);
 app.component("ElAside", ElAside);
+app.component("ElBadge", ElBadge);
 app.component("ElButton", ElButton);
 app.component("ElContainer", ElContainer);
 app.component("ElDescriptions", ElDescriptions);

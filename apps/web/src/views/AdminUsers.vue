@@ -62,22 +62,35 @@
         </el-table-column>
         <el-table-column :label="t('common.actions')" width="360" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openAdjust(row.userId)">
-              {{ t("credits.adjust") }}
-            </el-button>
-            <el-button link type="primary" @click="filterLedger(row.userId)">
-              {{ t("credits.ledger") }}
-            </el-button>
-            <el-button link type="warning" @click="resetCheckIn(row)">
-              {{ t("adminUsers.resetCheckIn") }}
-            </el-button>
-            <el-button
-              link
-              :type="row.disabled ? 'success' : 'danger'"
-              @click="toggleDisabled(row)"
-            >
-              {{ row.disabled ? t("adminUsers.enableUser") : t("adminUsers.disableUser") }}
-            </el-button>
+            <div class="table-actions table-actions-text">
+              <el-tooltip :content="t('credits.adjust')" placement="top">
+                <el-button link type="primary" @click="openAdjust(row.userId)">
+                  {{ t("credits.adjust") }}
+                </el-button>
+              </el-tooltip>
+              <el-tooltip :content="t('credits.ledger')" placement="top">
+                <el-button link type="primary" @click="filterLedger(row.userId)">
+                  {{ t("credits.ledger") }}
+                </el-button>
+              </el-tooltip>
+              <el-tooltip :content="t('adminUsers.resetCheckIn')" placement="top">
+                <el-button link type="warning" @click="resetCheckIn(row)">
+                  {{ t("adminUsers.resetCheckIn") }}
+                </el-button>
+              </el-tooltip>
+              <el-tooltip
+                :content="row.disabled ? t('adminUsers.enableUser') : t('adminUsers.disableUser')"
+                placement="top"
+              >
+                <el-button
+                  link
+                  :type="row.disabled ? 'success' : 'danger'"
+                  @click="toggleDisabled(row)"
+                >
+                  {{ row.disabled ? t("adminUsers.enableUser") : t("adminUsers.disableUser") }}
+                </el-button>
+              </el-tooltip>
+            </div>
           </template>
         </el-table-column>
       </el-table>

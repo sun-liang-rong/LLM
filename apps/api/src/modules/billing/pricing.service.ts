@@ -261,18 +261,19 @@ export class PricingService {
       enabled: input.enabled ?? true,
     };
 
-    if (input.id) {
-      return this.prisma.model.update({
+    const saved = input.id
+      ? await this.prisma.model.update({
         where: { id: input.id },
         data,
+      })
+      : await this.prisma.model.upsert({
+        where: { publicId: data.publicId },
+        update: data,
+        create: data,
       });
-    }
 
-    return this.prisma.model.upsert({
-      where: { publicId: data.publicId },
-      update: data,
-      create: data,
-    });
+    await this.ensureModelAliasForPrice(data, provider);
+    return saved;
   }
 
   async deleteModelPrice(id: string) {
@@ -314,8 +315,8 @@ export class PricingService {
     });
     const modelMultiplier = model.priceMultiplier ?? 1;
     const multiplier = group?.multiplier ?? 1;
-    const costUsd = Number(
-      (cost.baseCostUsd * modelMultiplier * multiplier).toFixed(8),
+    const costUsd = this.roundUsd(
+      cost.baseCostUsd * modelMultiplier * multiplier,
     );
 
     return {
@@ -405,13 +406,55 @@ export class PricingService {
       model.inputUsdPerMillionTokens;
     const outputCostUsd =
       (usage.outputTokens / 1_000_000) * model.outputUsdPerMillionTokens;
-    const baseCostUsd = Number((inputCostUsd + outputCostUsd).toFixed(8));
+    const baseCostUsd = this.roundUsd(inputCostUsd + outputCostUsd);
 
     return {
       baseCostUsd,
-      inputCostUsd: Number(inputCostUsd.toFixed(8)),
-      outputCostUsd: Number(outputCostUsd.toFixed(8)),
+      inputCostUsd: this.roundUsd(inputCostUsd),
+      outputCostUsd: this.roundUsd(outputCostUsd),
     };
+  }
+
+  private roundUsd(value: number) {
+    return Number(Number(value || 0).toFixed(6));
+  }
+
+  private async ensureModelAliasForPrice(
+    model: {
+      providerId: string;
+      publicId: string;
+      upstreamModel: string;
+    },
+    provider: {
+      id: string;
+      provider: string;
+      protocol: string;
+    },
+  ) {
+    const existing = await this.prisma.modelAlias.findUnique({
+      where: { alias: model.publicId },
+    });
+    if (existing) {
+      return;
+    }
+
+    await this.prisma.modelAlias.create({
+      data: {
+        alias: model.publicId,
+        mode: "balanced",
+        targets: JSON.stringify([
+          {
+            providerId: provider.id,
+            providerSlug: provider.provider,
+            upstreamProtocol: provider.protocol,
+            upstreamModel: model.upstreamModel,
+            weight: 1,
+            priority: 1,
+            enabled: true,
+          },
+        ]),
+      },
+    });
   }
 
   private serializeModelPrice(model: {
