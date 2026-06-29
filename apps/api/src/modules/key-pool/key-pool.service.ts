@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, OnModuleDestroy } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { ProviderId, ProviderKeySummary } from "@gateway/shared";
 import { PrismaService } from "../database/prisma.service";
@@ -17,9 +17,10 @@ export interface ProviderKey {
 }
 
 @Injectable()
-export class KeyPoolService {
+export class KeyPoolService implements OnModuleDestroy {
   private readonly keys: ProviderKey[];
   private cursor = 0;
+  private readonly maintenanceTimer: NodeJS.Timeout;
 
   constructor(
     private readonly config: ConfigService,
@@ -30,6 +31,14 @@ export class KeyPoolService {
       ...this.readKeys("openai", "OPENAI_API_KEYS"),
       ...this.readKeys("anthropic", "ANTHROPIC_API_KEYS"),
     ];
+    this.maintenanceTimer = setInterval(() => {
+      void this.restoreExpiredCooldowns();
+    }, 10_000);
+    this.maintenanceTimer.unref?.();
+  }
+
+  onModuleDestroy() {
+    clearInterval(this.maintenanceTimer);
   }
 
   async select(providerId: string): Promise<ProviderKey | undefined> {
@@ -233,6 +242,7 @@ export class KeyPoolService {
       data: {
         status: "healthy",
         cooldownUntil: null,
+        lastError: null,
       },
     });
   }
@@ -317,12 +327,6 @@ export class KeyPoolService {
     if (kind === "rate_limit") {
       if (retryAfterMs !== undefined) {
         return new Date(Date.now() + retryAfterMs);
-      }
-      const key = await this.prisma.providerKey.findUnique({ where: { id: keyId } });
-      if (key?.windowStartedAt) {
-        return new Date(
-          key.windowStartedAt.getTime() + key.windowSizeMinutes * 60_000,
-        );
       }
       return new Date(Date.now() + 60 * 1000);
     }
